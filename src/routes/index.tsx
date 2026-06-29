@@ -90,6 +90,10 @@ function PlanBuilder() {
     const u: Msg = { id: crypto.randomUUID(), role: "user", text: t };
     setMessages((m) => [...m, u]);
     setInput("");
+    // deduct sats — pay per prompt
+    setSats((s) => Math.max(0, s - 15));
+    setSatsPulse(true);
+    setTimeout(() => setSatsPulse(false), 600);
     setTimeout(() => {
       setMessages((m) => [
         ...m,

@@ -22,6 +22,10 @@ import {
   Scale,
   Palette,
   Loader2,
+  Sun,
+  Moon,
+  Zap,
+  Info,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -65,6 +69,16 @@ function PlanBuilder() {
   const [amaBefore, setAmaBefore] = useState(false);
   const [reqs, setReqs] = useState({ ux: true, db: true, legal: false });
 
+  // theme + sats
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [sats, setSats] = useState(50000);
+  const [satsPulse, setSatsPulse] = useState(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "light") root.classList.add("light");
+    else root.classList.remove("light");
+  }, [theme]);
+
   const scrollerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
@@ -76,6 +90,10 @@ function PlanBuilder() {
     const u: Msg = { id: crypto.randomUUID(), role: "user", text: t };
     setMessages((m) => [...m, u]);
     setInput("");
+    // deduct sats — pay per prompt
+    setSats((s) => Math.max(0, s - 15));
+    setSatsPulse(true);
+    setTimeout(() => setSatsPulse(false), 600);
     setTimeout(() => {
       setMessages((m) => [
         ...m,
@@ -120,12 +138,76 @@ function PlanBuilder() {
             </div>
           </div>
         </div>
-        <div className="hidden items-center gap-2 md:flex">
-          <Badge icon={<BookOpen className="h-3 w-3" />} label="Plan B Resources" />
-          <Badge icon={<Github className="h-3 w-3" />} label="GitHub Repos" />
-          <div className="ml-2 flex items-center gap-1.5 rounded-full border border-border/60 bg-panel/60 px-2.5 py-1 text-[11px] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> node synced · block 901,204
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
+            <Badge icon={<BookOpen className="h-3 w-3" />} label="Plan B Resources" />
+            <Badge icon={<Github className="h-3 w-3" />} label="GitHub Repos" />
           </div>
+
+          {/* Sats balance */}
+          <div className="group relative">
+            <motion.div
+              animate={satsPulse ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-center gap-1.5 rounded-full border border-bitcoin/40 bg-bitcoin/10 px-3 py-1.5 font-mono text-xs text-bitcoin"
+            >
+              <Zap className="h-3.5 w-3.5 fill-bitcoin" />
+              <span className="tabular-nums font-semibold">{sats.toLocaleString()}</span>
+              <span className="text-bitcoin/70">sats</span>
+              <Info className="ml-0.5 h-3 w-3 opacity-60" />
+            </motion.div>
+            <div className="pointer-events-none absolute right-0 top-full z-40 mt-2 w-60 rounded-md border border-border bg-popover px-3 py-2 text-[11px] text-popover-foreground opacity-0 shadow-xl transition group-hover:opacity-100">
+              <div className="font-semibold text-bitcoin">Pay per prompt & compute</div>
+              <div className="mt-1 text-muted-foreground">
+                Each prompt deducts sats based on tokens and compute consumed. Top up anytime over Lightning.
+              </div>
+            </div>
+            <AnimatePresence>
+              {satsPulse && (
+                <motion.div
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: 1, y: -10 }}
+                  exit={{ opacity: 0 }}
+                  className="pointer-events-none absolute -bottom-4 right-2 font-mono text-[10px] font-bold text-bitcoin"
+                >
+                  −15
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            aria-label="Toggle theme"
+            className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-md border border-border/70 bg-panel/70 text-muted-foreground transition hover:border-bitcoin/50 hover:text-bitcoin"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === "dark" ? (
+                <motion.span
+                  key="moon"
+                  initial={{ y: -16, opacity: 0, rotate: -90 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  exit={{ y: 16, opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 grid place-items-center"
+                >
+                  <Moon className="h-4 w-4" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="sun"
+                  initial={{ y: -16, opacity: 0, rotate: -90 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  exit={{ y: 16, opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 grid place-items-center"
+                >
+                  <Sun className="h-4 w-4" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
         </div>
       </header>
 

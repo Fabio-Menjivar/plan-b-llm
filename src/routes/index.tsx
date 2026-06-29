@@ -22,6 +22,10 @@ import {
   Scale,
   Palette,
   Loader2,
+  Sun,
+  Moon,
+  Zap,
+  Info,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({

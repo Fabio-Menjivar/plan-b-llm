@@ -69,6 +69,16 @@ function PlanBuilder() {
   const [amaBefore, setAmaBefore] = useState(false);
   const [reqs, setReqs] = useState({ ux: true, db: true, legal: false });
 
+  // theme + sats
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [sats, setSats] = useState(50000);
+  const [satsPulse, setSatsPulse] = useState(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "light") root.classList.add("light");
+    else root.classList.remove("light");
+  }, [theme]);
+
   const scrollerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });

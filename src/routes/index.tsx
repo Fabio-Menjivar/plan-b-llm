@@ -7,9 +7,11 @@ import {
   Send,
   Bitcoin,
   Boxes,
+  Code2,
   Monitor,
   Hammer,
   ChevronDown,
+  ExternalLink,
   Sparkles,
   Github,
   BookOpen,
@@ -27,6 +29,15 @@ import {
   Zap,
   Info,
 } from "lucide-react";
+import { FundWithLightningModal } from "@/components/FundWithLightningModal";
+import { CodeIdeView } from "@/components/CodeIdeView";
+import { GITHUB_REPOS } from "@/lib/links";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,7 +64,7 @@ function PlanBuilder() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [model, setModel] = useState(MODELS[0]);
   const [modelOpen, setModelOpen] = useState(false);
-  const [tab, setTab] = useState<"architecture" | "preview">("architecture");
+  const [tab, setTab] = useState<"architecture" | "code" | "preview">("architecture");
   const [building, setBuilding] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
@@ -65,14 +76,15 @@ function PlanBuilder() {
   ]);
 
   // settings
-  const [autoMode, setAutoMode] = useState(true);
-  const [amaBefore, setAmaBefore] = useState(false);
+  const [modality, setModality] = useState<"auto" | "ama">("auto");
   const [reqs, setReqs] = useState({ ux: true, db: true, legal: false });
+  const [githubOpen, setGithubOpen] = useState(false);
 
   // theme + sats
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [sats, setSats] = useState(50000);
   const [satsPulse, setSatsPulse] = useState(false);
+  const [fundOpen, setFundOpen] = useState(false);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "light") root.classList.add("light");
@@ -112,11 +124,16 @@ function PlanBuilder() {
     setTimeout(() => setBuilding(false), 1800);
   }
 
+  function handleDepositComplete(amount: number) {
+    setSats((s) => s + amount);
+  }
+
   return (
-    <div className="relative flex h-screen w-full overflow-hidden text-foreground">
+    <TooltipProvider delayDuration={200}>
+    <div className="relative flex h-screen w-full flex-col overflow-hidden text-foreground">
       {/* Top bar */}
-      <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between border-b border-border/60 bg-background/60 px-4 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
+      <header className="absolute inset-x-0 top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background/60 px-3 backdrop-blur-xl sm:px-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
@@ -129,51 +146,61 @@ function PlanBuilder() {
               <Bitcoin className="h-4 w-4" />
             </div>
             <div className="leading-tight">
-              <div className="font-mono text-sm font-semibold tracking-tight">
+              <div className="font-mono text-xs font-semibold tracking-tight sm:text-sm">
                 Plan <span className="text-bitcoin">₿</span>uilder
               </div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="hidden text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:block">
                 bitcoin · dev · ide
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 md:flex">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="hidden items-center gap-2 lg:flex">
             <Badge icon={<BookOpen className="h-3 w-3" />} label="Plan B Resources" />
-            <Badge icon={<Github className="h-3 w-3" />} label="GitHub Repos" />
+            <GitHubReposDropdown open={githubOpen} onOpenChange={setGithubOpen} />
           </div>
 
-          {/* Sats balance */}
-          <div className="group relative">
-            <motion.div
-              animate={satsPulse ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-center gap-1.5 rounded-full border border-bitcoin/40 bg-bitcoin/10 px-3 py-1.5 font-mono text-xs text-bitcoin"
-            >
-              <Zap className="h-3.5 w-3.5 fill-bitcoin" />
-              <span className="tabular-nums font-semibold">{sats.toLocaleString()}</span>
-              <span className="text-bitcoin/70">sats</span>
-              <Info className="ml-0.5 h-3 w-3 opacity-60" />
-            </motion.div>
-            <div className="pointer-events-none absolute right-0 top-full z-40 mt-2 w-60 rounded-md border border-border bg-popover px-3 py-2 text-[11px] text-popover-foreground opacity-0 shadow-xl transition group-hover:opacity-100">
-              <div className="font-semibold text-bitcoin">Pay per prompt & compute</div>
-              <div className="mt-1 text-muted-foreground">
-                Each prompt deducts sats based on tokens and compute consumed. Top up anytime over Lightning.
+          {/* Sats balance + fund */}
+          <div className="flex items-center gap-1.5">
+            <div className="group relative">
+              <motion.div
+                animate={satsPulse ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center gap-1 rounded-full border border-bitcoin/40 bg-bitcoin/10 px-2 py-1 font-mono text-[10px] text-bitcoin sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
+              >
+                <Zap className="h-3 w-3 fill-bitcoin sm:h-3.5 sm:w-3.5" />
+                <span className="tabular-nums font-semibold">{sats.toLocaleString()}</span>
+                <span className="hidden text-bitcoin/70 sm:inline">sats</span>
+                <Info className="ml-0.5 hidden h-3 w-3 opacity-60 sm:block" />
+              </motion.div>
+              <div className="pointer-events-none absolute right-0 top-full z-40 mt-2 w-60 rounded-md border border-border bg-popover px-3 py-2 text-[11px] text-popover-foreground opacity-0 shadow-xl transition group-hover:opacity-100">
+                <div className="font-semibold text-bitcoin">Pay per prompt & compute</div>
+                <div className="mt-1 text-muted-foreground">
+                  Each prompt deducts sats based on tokens and compute consumed. Top up anytime over Lightning.
+                </div>
               </div>
+              <AnimatePresence>
+                {satsPulse && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -2 }}
+                    animate={{ opacity: 1, y: -10 }}
+                    exit={{ opacity: 0 }}
+                    className="pointer-events-none absolute -bottom-4 right-2 font-mono text-[10px] font-bold text-bitcoin"
+                  >
+                    −15
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <AnimatePresence>
-              {satsPulse && (
-                <motion.div
-                  initial={{ opacity: 0, y: -2 }}
-                  animate={{ opacity: 1, y: -10 }}
-                  exit={{ opacity: 0 }}
-                  className="pointer-events-none absolute -bottom-4 right-2 font-mono text-[10px] font-bold text-bitcoin"
-                >
-                  −15
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <button
+              type="button"
+              onClick={() => setFundOpen(true)}
+              aria-label="Fund with Lightning"
+              className="rounded-md border border-bitcoin/40 bg-[#F7931A]/10 px-2 py-1 font-mono text-[10px] font-semibold text-[#F7931A] transition hover:border-bitcoin/60 hover:bg-[#F7931A]/20 sm:px-2.5 sm:py-1.5 sm:text-[11px]"
+            >
+              Fund
+            </button>
           </div>
 
           {/* Theme toggle */}
@@ -211,27 +238,27 @@ function PlanBuilder() {
         </div>
       </header>
 
-      {/* Main split */}
-      <main className="flex w-full pt-14">
+      {/* Main split — stacked on mobile, side-by-side on desktop */}
+      <main className="flex w-full flex-1 flex-col overflow-y-auto pt-14 md:flex-row md:overflow-hidden">
         {/* Chat panel */}
-        <section className="flex w-full min-w-0 flex-col border-r border-border/60 md:w-[55%]">
+        <section className="flex h-[50vh] min-h-[280px] w-full shrink-0 flex-col border-b border-border/60 md:h-auto md:min-h-0 md:w-[55%] md:shrink md:border-b-0 md:border-r">
           {/* Chat header */}
-          <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-panel/40 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-panel/40 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-bitcoin" />
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-bitcoin" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-xs">
                 conversation
               </span>
             </div>
             {/* Model select */}
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 onClick={() => setModelOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-md border border-border/70 bg-elevated px-3 py-1.5 font-mono text-xs hover:border-bitcoin/50"
+                className="flex max-w-[160px] items-center gap-1.5 truncate rounded-md border border-border/70 bg-elevated px-2 py-1.5 font-mono text-[10px] hover:border-bitcoin/50 sm:max-w-none sm:gap-2 sm:px-3 sm:text-xs"
               >
-                <Bot className="h-3.5 w-3.5 text-bitcoin" />
-                {model}
-                <ChevronDown className={`h-3.5 w-3.5 transition ${modelOpen ? "rotate-180" : ""}`} />
+                <Bot className="h-3.5 w-3.5 shrink-0 text-bitcoin" />
+                <span className="truncate">{model}</span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition ${modelOpen ? "rotate-180" : ""}`} />
               </button>
               <AnimatePresence>
                 {modelOpen && (
@@ -263,26 +290,26 @@ function PlanBuilder() {
           </div>
 
           {/* Messages */}
-          <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="mx-auto flex max-w-2xl flex-col gap-5">
+          <div ref={scrollerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6">
+            <div className="mx-auto flex max-w-2xl flex-col gap-4 sm:gap-5">
               {messages.map((m) => (
                 <motion.div
                   key={m.id}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-2 sm:gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
                 >
                   <div
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-semibold ${
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-xs font-semibold sm:h-8 sm:w-8 ${
                       m.role === "user"
                         ? "bg-elevated text-foreground"
                         : "bg-bitcoin text-bitcoin-foreground"
                     }`}
                   >
-                    {m.role === "user" ? "you" : <Bitcoin className="h-4 w-4" />}
+                    {m.role === "user" ? "you" : <Bitcoin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                   </div>
                   <div
-                    className={`max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
+                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed sm:max-w-[80%] sm:px-3.5 sm:py-2.5 ${
                       m.role === "user"
                         ? "border border-border/70 bg-panel"
                         : "border border-bitcoin/15 bg-bitcoin/[0.06]"
@@ -296,9 +323,9 @@ function PlanBuilder() {
           </div>
 
           {/* Sticky input */}
-          <div className="sticky bottom-0 border-t border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
+          <div className="sticky bottom-0 border-t border-border/60 bg-background/80 px-3 py-2.5 backdrop-blur-xl sm:px-4 sm:py-3">
             <div className="mx-auto max-w-2xl">
-              <div className="flex items-end gap-2 rounded-xl border border-border bg-panel p-2 focus-within:border-bitcoin/60 focus-within:shadow-glow">
+              <div className="flex items-end gap-1.5 rounded-xl border border-border bg-panel p-1.5 focus-within:border-bitcoin/60 focus-within:shadow-glow sm:gap-2 sm:p-2">
                 <textarea
                   rows={1}
                   value={input}
@@ -309,8 +336,8 @@ function PlanBuilder() {
                       send();
                     }
                   }}
-                  placeholder="Describe your Bitcoin app… e.g. 'Lightning tip jar with LNURL-pay'"
-                  className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder="Describe your Bitcoin app…"
+                  className="max-h-32 min-h-[32px] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground sm:max-h-40 sm:min-h-[36px] sm:py-2"
                 />
                 <button
                   onClick={send}
@@ -321,56 +348,72 @@ function PlanBuilder() {
                   <Send className="h-4 w-4" />
                 </button>
               </div>
-              <div className="mt-2 flex items-center justify-between px-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                <span>↵ send · ⇧↵ newline</span>
-                <span>context: Plan B + GitHub</span>
+              <div className="mt-1.5 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground sm:mt-2 sm:text-[10px]">
+                <span className="truncate">↵ send · ⇧↵ newline</span>
+                <span className="ml-2 hidden truncate sm:inline">context: Plan B + GitHub</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Right panel: preview / arch */}
-        <section className="hidden min-w-0 flex-1 flex-col md:flex">
-          <div className="flex items-center justify-between border-b border-border/60 bg-panel/40 px-3 py-2">
-            <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-elevated p-1">
-              <TabBtn active={tab === "architecture"} onClick={() => setTab("architecture")} icon={<Boxes className="h-3.5 w-3.5" />}>
+        {/* Right panel: preview / arch / code */}
+        <section className="flex min-h-[45vh] w-full min-w-0 flex-1 flex-col md:min-h-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-panel/40 px-2 py-2 sm:px-3">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-lg border border-border/70 bg-elevated p-0.5 sm:gap-1 sm:p-1">
+              <TabBtn active={tab === "architecture"} onClick={() => setTab("architecture")} icon={<Boxes className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}>
                 Architecture
               </TabBtn>
-              <TabBtn active={tab === "preview"} onClick={() => setTab("preview")} icon={<Monitor className="h-3.5 w-3.5" />}>
+              <TabBtn active={tab === "code"} onClick={() => setTab("code")} icon={<Code2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}>
+                Code
+              </TabBtn>
+              <TabBtn active={tab === "preview"} onClick={() => setTab("preview")} icon={<Monitor className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}>
                 Preview
               </TabBtn>
             </div>
             <button
               onClick={triggerBuild}
               disabled={building}
-              className="group flex items-center gap-2 rounded-md bg-bitcoin px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-bitcoin-foreground shadow-glow transition hover:bg-bitcoin-glow disabled:opacity-70"
+              className="group flex shrink-0 items-center gap-1.5 rounded-md bg-bitcoin px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-bitcoin-foreground shadow-glow transition hover:bg-bitcoin-glow disabled:opacity-70 sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
             >
-              {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hammer className="h-4 w-4" />}
+              {building ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" /> : <Hammer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
               {building ? "Building…" : "Build"}
             </button>
           </div>
 
-          <div className="relative flex-1 overflow-hidden">
+          <div className="relative min-h-[320px] flex-1 overflow-hidden">
             <AnimatePresence mode="wait">
-              {tab === "architecture" ? (
+              {tab === "architecture" && (
                 <motion.div
                   key="arch"
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute inset-0 overflow-auto p-6"
+                  className="absolute inset-0 overflow-auto p-3 sm:p-6"
                 >
                   <ArchitectureView />
                 </motion.div>
-              ) : (
+              )}
+              {tab === "code" && (
+                <motion.div
+                  key="code"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 p-2 sm:p-4"
+                >
+                  <CodeIdeView />
+                </motion.div>
+              )}
+              {tab === "preview" && (
                 <motion.div
                   key="prev"
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute inset-0 p-4"
+                  className="absolute inset-0 p-2 sm:p-4"
                 >
                   <PreviewView building={building} />
                 </motion.div>
@@ -392,11 +435,11 @@ function PlanBuilder() {
               className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
             />
             <motion.aside
-              initial={{ x: -340 }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: -340 }}
+              exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="fixed inset-y-0 left-0 z-40 flex w-[320px] flex-col border-r border-border bg-panel"
+              className="fixed inset-y-0 left-0 z-40 flex w-full max-w-full flex-col border-r border-border bg-panel sm:w-[320px] sm:max-w-[85vw]"
             >
               <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -413,22 +456,26 @@ function PlanBuilder() {
 
               <div className="flex-1 overflow-y-auto p-4">
                 <SectionLabel>Modalities</SectionLabel>
-                <div className="mt-2 space-y-2">
-                  <Toggle label="Auto" desc="Let the agent decide flow" checked={autoMode} onChange={setAutoMode} />
-                  <Toggle label="AMA Before" desc="Ask clarifying questions first" checked={amaBefore} onChange={setAmaBefore} />
+                <div className="mt-2">
+                  <ModalitySwitch value={modality} onChange={setModality} />
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {modality === "auto"
+                      ? "Let the agent decide flow automatically."
+                      : "Ask clarifying questions before building."}
+                  </p>
                 </div>
 
                 <SectionLabel className="mt-6">Project Requirements</SectionLabel>
                 <div className="mt-2 space-y-1.5">
-                  <Check3 icon={<Palette className="h-3.5 w-3.5" />} label="UX" checked={reqs.ux} onChange={(v) => setReqs({ ...reqs, ux: v })} />
-                  <Check3 icon={<Database className="h-3.5 w-3.5" />} label="DB" checked={reqs.db} onChange={(v) => setReqs({ ...reqs, db: v })} />
-                  <Check3 icon={<Scale className="h-3.5 w-3.5" />} label="Legal" checked={reqs.legal} onChange={(v) => setReqs({ ...reqs, legal: v })} />
+                  <Check3 icon={<Palette className="h-3.5 w-3.5" />} label="UX" tooltip="Ensures responsive design and accessibility standards." checked={reqs.ux} onChange={(v) => setReqs({ ...reqs, ux: v })} />
+                  <Check3 icon={<Database className="h-3.5 w-3.5" />} label="DB" tooltip="Checks database schema and data integrity." checked={reqs.db} onChange={(v) => setReqs({ ...reqs, db: v })} />
+                  <Check3 icon={<Scale className="h-3.5 w-3.5" />} label="Legal" tooltip="Verifies open-source licenses and compliance." checked={reqs.legal} onChange={(v) => setReqs({ ...reqs, legal: v })} />
                 </div>
 
                 <SectionLabel className="mt-6">Integrations</SectionLabel>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <DrawerLink icon={<Terminal className="h-4 w-4" />} label="CLI Client" />
-                  <DrawerLink icon={<Bot className="h-4 w-4" />} label="Redirect Bot" />
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <DrawerExternalLink icon={<Terminal className="h-4 w-4" />} label="CLI Client" href="#" />
+                  <DrawerExternalLink icon={<Bot className="h-4 w-4" />} label="Redirect Bot" href="#" />
                   <DrawerLink icon={<Github className="h-4 w-4" />} label="GitHub" />
                   <DrawerLink icon={<BookOpen className="h-4 w-4" />} label="Plan B Docs" />
                 </div>
@@ -448,7 +495,14 @@ function PlanBuilder() {
           </>
         )}
       </AnimatePresence>
+
+      <FundWithLightningModal
+        open={fundOpen}
+        onOpenChange={setFundOpen}
+        onDepositComplete={handleDepositComplete}
+      />
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -460,6 +514,95 @@ function Badge({ icon, label }: { icon: React.ReactNode; label: string }) {
       {icon}
       {label}
     </span>
+  );
+}
+
+function GitHubReposDropdown({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className="inline-flex items-center gap-1.5 rounded-full border border-bitcoin/30 bg-bitcoin/10 px-2.5 py-1 font-mono text-[11px] text-bitcoin transition hover:border-bitcoin/50 hover:bg-bitcoin/15"
+      >
+        <Github className="h-3 w-3" />
+        GitHub Repos
+        <ChevronDown className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="absolute right-0 z-30 mt-1.5 w-48 overflow-hidden rounded-md border border-border bg-popover shadow-xl"
+          >
+            <a
+              href={GITHUB_REPOS.frontend}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between px-3 py-2.5 font-mono text-xs transition hover:bg-accent"
+              onClick={() => onOpenChange(false)}
+            >
+              Frontend Repo
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            </a>
+            <a
+              href={GITHUB_REPOS.backend}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 font-mono text-xs transition hover:bg-accent"
+              onClick={() => onOpenChange(false)}
+            >
+              Backend Repo
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ModalitySwitch({
+  value,
+  onChange,
+}: {
+  value: "auto" | "ama";
+  onChange: (v: "auto" | "ama") => void;
+}) {
+  return (
+    <div className="relative flex rounded-full border border-border/70 bg-[#121212] p-1">
+      <motion.div
+        className="absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-bitcoin shadow-glow"
+        animate={{ left: value === "auto" ? 4 : "calc(50%)" }}
+        transition={{ type: "spring", stiffness: 400, damping: 32 }}
+      />
+      <button
+        type="button"
+        onClick={() => onChange("auto")}
+        className={`relative z-10 flex-1 rounded-full py-2 text-center font-mono text-xs transition ${
+          value === "auto" ? "font-semibold text-bitcoin-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Auto
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("ama")}
+        className={`relative z-10 flex-1 rounded-full py-2 text-center font-mono text-xs transition ${
+          value === "ama" ? "font-semibold text-bitcoin-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        AMA Before
+      </button>
+    </div>
   );
 }
 
@@ -477,12 +620,12 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-xs transition ${
+      className={`relative flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 font-mono text-[10px] transition sm:gap-1.5 sm:px-3 sm:text-xs ${
         active ? "bg-bitcoin text-bitcoin-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
-      {children}
+      <span className="truncate">{children}</span>
     </button>
   );
 }
@@ -495,50 +638,25 @@ function SectionLabel({ children, className = "" }: { children: React.ReactNode;
   );
 }
 
-function Toggle({
-  label,
-  desc,
-  checked,
-  onChange,
-}: {
-  label: string;
-  desc?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between rounded-md border border-border/70 bg-elevated px-3 py-2.5 text-left transition hover:border-bitcoin/40"
-    >
-      <div>
-        <div className="text-sm">{label}</div>
-        {desc && <div className="text-[11px] text-muted-foreground">{desc}</div>}
-      </div>
-      <span
-        className={`relative h-5 w-9 rounded-full transition ${checked ? "bg-bitcoin" : "bg-border"}`}
-      >
-        <motion.span
-          layout
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-background shadow ${checked ? "left-[18px]" : "left-0.5"}`}
-        />
-      </span>
-    </button>
-  );
-}
-
 function Check3({
   icon,
   label,
+  tooltip,
   checked,
   onChange,
 }: {
   icon: React.ReactNode;
   label: string;
+  tooltip?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const labelEl = (
+    <span className="cursor-help text-sm underline decoration-transparent decoration-dotted underline-offset-4 transition hover:decoration-muted-foreground/50">
+      {label}
+    </span>
+  );
+
   return (
     <button
       onClick={() => onChange(!checked)}
@@ -552,8 +670,45 @@ function Check3({
         {checked ? <Check className="h-3 w-3" /> : <Circle className="h-2 w-2 opacity-0" />}
       </span>
       <span className="text-muted-foreground">{icon}</span>
-      <span className="text-sm">{label}</span>
+      {tooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{labelEl}</TooltipTrigger>
+          <TooltipContent
+            side="right"
+            className="max-w-[220px] border border-border bg-[#27272A] px-3 py-2 text-[11px] leading-snug text-foreground shadow-xl"
+          >
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        labelEl
+      )}
     </button>
+  );
+}
+
+function DrawerExternalLink({
+  icon,
+  label,
+  href,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between rounded-md border border-border/70 bg-elevated px-3 py-2.5 text-left text-sm transition hover:border-bitcoin/40 hover:text-bitcoin"
+    >
+      <span className="flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+    </a>
   );
 }
 
@@ -601,7 +756,7 @@ function ArchitectureView() {
         </div>
       </div>
 
-      <div className="relative h-[460px] overflow-hidden rounded-xl border border-border bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] [background-size:18px_18px]">
+      <div className="relative h-[280px] overflow-hidden rounded-xl border border-border bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] [background-size:18px_18px] sm:h-[380px] md:h-[460px]">
         <svg className="absolute inset-0 h-full w-full">
           {edges.map(([a, b], i) => {
             const A = map[a], B = map[b];
@@ -635,7 +790,7 @@ function ArchitectureView() {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { k: "Stack", v: "TS · React · Fastify" },
           { k: "Chain", v: "Bitcoin · LN" },

@@ -73,6 +73,23 @@
   --bitcoin-glow: oklch(0.82 0.16 60);
   --bitcoin-foreground: oklch(0.16 0.01 250);
   --success: oklch(0.72 0.16 155);
+
+  /* IDE / Code tab syntax (dark) */
+  --ide-activity: #121212;
+  --ide-sidebar: #27272a;
+  --ide-tab-bar: #252526;
+  --ide-editor: #121212;
+  --ide-status: #007acc;
+  --ide-line-number: #858585;
+  --ide-syntax-keyword: #c792ea;
+  --ide-syntax-function: #82aaff;
+  --ide-syntax-string: #f7931a;
+  --ide-syntax-comment: #6a9955;
+  --ide-syntax-type: #ffcb6b;
+  --ide-syntax-variable: #eeffff;
+  --ide-syntax-punct: #89ddff;
+  --ide-syntax-number: #f78c6c;
+  --ide-syntax-markdown: #eeffff;
 }
 
 .light {
@@ -97,6 +114,23 @@
   --input: oklch(0.92 0.006 250);
   --ring: oklch(0.72 0.17 55);
   --bitcoin-foreground: oklch(0.99 0 0);
+
+  /* IDE / Code tab syntax (light — WCAG high contrast on #FFFFFF) */
+  --ide-activity: #ececec;
+  --ide-sidebar: #f3f3f3;
+  --ide-tab-bar: #ececec;
+  --ide-editor: #ffffff;
+  --ide-status: #007acc;
+  --ide-line-number: #237893;
+  --ide-syntax-keyword: #0000ff;
+  --ide-syntax-function: #0969da;
+  --ide-syntax-string: #a31515;
+  --ide-syntax-comment: #008000;
+  --ide-syntax-type: #0070c1;
+  --ide-syntax-variable: #1f2328;
+  --ide-syntax-punct: #1f2328;
+  --ide-syntax-number: #098658;
+  --ide-syntax-markdown: #1f2328;
 }
 
 .light body {
@@ -119,5 +153,35 @@
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in oklab, var(--bitcoin) 14%, transparent), transparent),
       linear-gradient(180deg, oklch(0.16 0.012 250), oklch(0.19 0.013 250));
+  }
+}
+
+@layer components {
+  .ide-kw {
+    color: var(--ide-syntax-keyword);
+  }
+  .ide-fn {
+    color: var(--ide-syntax-function);
+  }
+  .ide-str {
+    color: var(--ide-syntax-string);
+  }
+  .ide-cmt {
+    color: var(--ide-syntax-comment);
+  }
+  .ide-type {
+    color: var(--ide-syntax-type);
+  }
+  .ide-var {
+    color: var(--ide-syntax-variable);
+  }
+  .ide-punct {
+    color: var(--ide-syntax-punct);
+  }
+  .ide-num {
+    color: var(--ide-syntax-number);
+  }
+  .ide-md {
+    color: var(--ide-syntax-markdown);
   }
 }

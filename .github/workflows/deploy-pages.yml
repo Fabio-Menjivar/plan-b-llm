@@ -1,0 +1,92 @@
+# =============================================================================
+# Plan B demo — GitHub Pages deploy  (DRAFT / NOT YET VERIFIED)
+# =============================================================================
+#
+# IMPORTANT — read before enabling:
+#
+# This repo is a TanStack Start app whose DEFAULT build target is a Nitro
+# Cloudflare Worker (SSR), NOT a static site. A plain `build` emits
+# `.output/server` (a worker) plus `.output/public` (client assets) but NO
+# static `index.html`, so it cannot be served by static GitHub Pages as-is.
+#
+# A static export (Nitro `static` preset / prerender) does NOT yet work
+# out-of-the-box with the wrapped `@lovable.dev/vite-tanstack-config` here:
+# prerendering currently 404s on `/` and the SSR build errors. That static
+# export step must be SOLVED AND VERIFIED before this workflow can produce a
+# working Pages site.
+#
+# Because of that, this workflow is intentionally:
+#   - `workflow_dispatch` ONLY (manual) — it will NOT run on push, so it cannot
+#     spam Fabio's repo with broken deploys.
+#   - a SCAFFOLD that documents the intended pipeline (demo mode, base path,
+#     artifact upload) for when the static-export step is finished.
+#
+# It builds in STATIC DEMO MODE only: no secrets, no OpenRouter calls, fixtures
+# only (VITE_PLANB_MODE=demo). Never add secrets to this workflow.
+#
+# To finish: make the build emit a static `.output/public` containing
+# `index.html` (and `planb-demo/index.html`), verify locally with a static
+# server, then this workflow can be switched to run on push.
+# =============================================================================
+
+name: Deploy Plan B demo to GitHub Pages (DRAFT)
+
+on:
+  workflow_dispatch: {}
+
+# Least-privilege permissions required by GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build (static demo mode, Pages base path)
+        env:
+          # Static demo only — no secrets, no remote backend.
+          VITE_PLANB_MODE: demo
+          # Project Pages base path; consumed by vite.config.ts (env-guarded).
+          PLANB_PAGES_BASE: /plan-b-llm/
+          # Intended static export preset. NOTE: prerender does not yet succeed
+          # for this setup — see the header comment. Resolve before relying on CI.
+          SERVER_PRESET: static
+        run: bun run build
+
+      - name: Ensure .nojekyll (serve _-prefixed asset paths)
+        run: touch .output/public/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # The static site root for this framework is `.output/public`.
+          path: .output/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

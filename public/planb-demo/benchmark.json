@@ -1,0 +1,35 @@
+{
+  "id": "demo-breez-wallet-bench-0001",
+  "caseName": "Breez Lightning Wallet",
+  "modelName": "glm-5.2",
+  "benchmarkMode": "mock",
+  "runs": [
+    {
+      "strategy": "generic",
+      "modelName": "glm-5.2",
+      "provider": "zhipu",
+      "inputTokens": 520,
+      "outputTokens": 3400,
+      "totalTokens": 3920,
+      "latencyMs": 1180,
+      "outputHasGraph": false,
+      "outputHasSecurityNotes": false,
+      "score": { "stackAccuracy": 0.55, "graphCompleteness": 0.2, "securityAwareness": 0.3, "tokenEfficiency": 0.6, "overall": 0.43 }
+    },
+    {
+      "strategy": "specialized_harness",
+      "modelName": "glm-5.2",
+      "provider": "zhipu",
+      "inputTokens": 1980,
+      "outputTokens": 3120,
+      "totalTokens": 5100,
+      "latencyMs": 1320,
+      "outputHasGraph": true,
+      "outputHasSecurityNotes": true,
+      "score": { "stackAccuracy": 0.92, "graphCompleteness": 0.88, "securityAwareness": 0.9, "tokenEfficiency": 0.74, "overall": 0.86 }
+    }
+  ],
+  "summary": "The specialized harness produces a grounded stack, a composability graph, and security notes that the generic prompt omits — at a modest token cost.",
+  "winner": "specialized_harness",
+  "note": "Illustrative mock sample for the demo. Not a verified real-provider benchmark."
+}
